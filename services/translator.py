@@ -5,38 +5,38 @@ from deep_translator import GoogleTranslator
 
 MAPPING_FILE = "mapping.json"
 
-# 🔑 Load or initialize mapping
+# Load or initialize mapping
 if os.path.exists(MAPPING_FILE):
     with open(MAPPING_FILE, "r", encoding="utf-8") as f:
         WORD_MAPPING = {k.lower(): v for k, v in json.load(f).items()}
 else:
     WORD_MAPPING = {}
 
-
 def save_mapping():
-    """Persist mapping to JSON file (with lowercase keys)."""
     with open(MAPPING_FILE, "w", encoding="utf-8") as f:
         json.dump(WORD_MAPPING, f, ensure_ascii=False, indent=2)
 
 
 def translate(text: str) -> str:
-    """Translate text, preferring custom mappings before Google Translate."""
-    tokens = re.findall(r"\w+|\s+|[^\w\s]", text, re.UNICODE)
-    result_tokens = []
+    """
+    Translate text using mapping first, then Google Translate for remaining words.
+    Mapping replacement is case-insensitive.
+    """
 
-    for token in tokens:
-        if token.strip() == "":
-            result_tokens.append(token)
-            continue
+    # Regex to match words only (ignore punctuation and spaces)
+    def replace_match(match):
+        word = match.group(0)
+        mapped = WORD_MAPPING.get(word.lower())
+        return mapped if mapped else word
 
-        mapped_value = WORD_MAPPING.get(token.lower())
-        if mapped_value:
-            result_tokens.append(mapped_value)
-        else:
-            translated = GoogleTranslator(source="en", target="ur").translate(token)
-            result_tokens.append(translated)
+    # Apply mapping replacements
+    mapped_text = re.sub(r"\b\w+\b", replace_match, text)
 
-    return "".join(result_tokens)
+    # Translate only if any unmapped words remain
+    # We send the whole sentence to Google Translate
+    final_translation = GoogleTranslator(source="en", target="ur").translate(mapped_text)
+    
+    return final_translation
 
 
 def get_mapping():
