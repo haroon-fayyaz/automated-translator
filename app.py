@@ -3,30 +3,13 @@
 # Standalone Flask/FastAPI service for translations
 # ==========================================
 
-from flask import Flask, request
+from flask import Flask, request, jsonify
 import logging
 import os
-from services.translator import AutoTranslator
-from threading import Lock
+import services.translator as ts
 import time
 
 app = Flask(__name__)
-
-# Global translator instance with thread safety
-translator_lock = Lock()
-translator = None
-
-
-def get_translator():
-    """Get or create translator instance (thread-safe)."""
-    global translator
-    with translator_lock:
-        if translator is None:
-            translator = AutoTranslator(
-                headless=True,
-                wait_time=2
-            )
-    return translator
 
 
 @app.route("/health")
@@ -53,10 +36,9 @@ def translate():
         target_lang = data.get("target_lang", "ur")
 
         # Get translator and perform translation
-        translator_instance = get_translator()
 
         start_time = time.time()
-        result = translator_instance.translate(text)
+        result = ts.translate(text)
         end_time = time.time()
 
         # Extract translated text
@@ -78,46 +60,30 @@ def translate():
         return {"error": f"Translation failed: {str(e)}"}, 500
 
 
-@app.route("/translate/batch", methods=["POST"])
-def translate_batch():
-    """Translate multiple texts."""
-    try:
-        data = request.get_json()
-
-        if not data or "texts" not in data or not isinstance(data["texts"], list):
-            return {"error": "texts array is required"}, 400
-
-        texts = data["texts"]
-        if len(texts) > 10:  # Limit batch size
-            return {"error": "Maximum 10 texts per batch"}, 400
-
-        translator_instance = get_translator()
-
-        start_time = time.time()
-        results = translator_instance.translate(texts)
-        end_time = time.time()
-
-        return {
-            "results": results,
-            "count": len(texts),
-            "processing_time": round(end_time - start_time, 2),
-        }, 200
-
-    except Exception as e:
-        logging.error(f"Batch translation error: {str(e)}")
-        return {"error": f"Batch translation failed: {str(e)}"}, 500
+@app.route("/mapping", methods=["GET"])
+def get_mapping():
+    return jsonify(ts.get_mapping())
 
 
-@app.route("/status")
-def status():
-    """Get service status and stats."""
-    return {
-        "service": "translation-service",
-        "status": "running",
-        "selenium_enabled": True,
-        "headless_mode": True,
-        "max_batch_size": 10,
-    }
+@app.route("/mapping", methods=["POST"])
+def add_mapping():
+    data = request.get_json()
+    en_word = data.get("english")
+    ur_word = data.get("urdu")
+
+    if not en_word or not ur_word:
+        return jsonify({"error": "Both 'english' and 'urdu' are required"}), 400
+
+    ts.add_mapping(en_word, ur_word)
+    return jsonify({"message": "Mapping added/updated", "mapping": ts.get_mapping()})
+
+
+@app.route("/mapping/<word>", methods=["DELETE"])
+def delete_mapping(word):
+    if ts.delete_mapping(word):
+        return jsonify({"message": f"Mapping for '{word}' deleted"})
+    else:
+        return jsonify({"error": f"No mapping found for '{word}'"}), 404
 
 
 if __name__ == "__main__":

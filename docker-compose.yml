@@ -9,10 +9,5 @@ services:
     environment:
       PORT: 5000
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 512m
-          cpus: "0.50"
-        reservations:
-          memory: 256m
+    mem_limit: 512m
+    cpus: 0.50
