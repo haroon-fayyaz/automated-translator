@@ -1,2 +1,6 @@
-.venv
+.venv/
+__pycache__/
 webdriver_cache
+*.pyc
+.env
+.DS_Store

@@ -656,8 +656,3 @@ def demo_auto_translation():
         print(f"Demo error: {e}")
     finally:
         translator.close()
-
-if __name__ == "__main__":
-    print("Google Translate Automation")
-    print("===========================")
-    demo_auto_translation()
