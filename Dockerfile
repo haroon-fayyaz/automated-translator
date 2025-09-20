@@ -66,6 +66,9 @@ RUN useradd --create-home --shell /bin/bash --uid 1000 app \
     && mkdir -p /home/app/.config/google-chrome \
     && chown -R app:app /home/app
 
+# Create webdriver cache and fix permissions
+RUN mkdir -p /app/webdriver_cache && chown -R app:app /app/webdriver_cache
+
 USER app
 
 EXPOSE 5000
